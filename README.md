@@ -34,4 +34,4 @@ The **Personal Financial Tracker** is a desktop application designed to help use
 1. **Clone the Repository**
    ```sh
    git clone https://github.com/joxyle-jhon/Personal_Financial_Management.git
-   cd personal-financial-tracker
+   cd ExpenseIncomeTrackerApp
