@@ -33,6 +33,12 @@ import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 
 public class ExpenseIncomeTrackerApp {
 
@@ -153,6 +159,14 @@ public class ExpenseIncomeTrackerApp {
         dashboardPanel.setBackground(new Color(226, 240, 241));
         frame.add(dashboardPanel, BorderLayout.CENTER);
         
+        // Calculate the total amount and populate data panel values
+        totalAmount = TransactionValuesCalculation.getTotalValue(TransactionDAO.getAllTransaction());
+        dataPanelValues.add(String.format("₱%,.2f", TransactionValuesCalculation.getTotalExpenses(TransactionDAO.getAllTransaction())));
+        dataPanelValues.add(String.format("₱%,.2f", TransactionValuesCalculation.getTotalIncomes(TransactionDAO.getAllTransaction())));
+        dataPanelValues.add("₱"+totalAmount);
+        
+        
+        
         // Add data panels for Expense, Income, and Total
         addDataPanel("Expense", 0);
         addDataPanel("Income", 1);
@@ -225,6 +239,11 @@ public class ExpenseIncomeTrackerApp {
         addButton.setBorderPainted(false);
         addButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
+        // Insert Button
+        addButton.addActionListener((e) -> {
+            addTransaction(typeCombobox, descriptionField, amountField);
+        });
+        
         // Add components to dialog panel
         dialogPanel.add(typeLabel);
         dialogPanel.add(typeCombobox);
@@ -235,13 +254,71 @@ public class ExpenseIncomeTrackerApp {
         dialogPanel.add(new JLabel());        
         dialogPanel.add(addButton);
         
+        //Database Connection
         DatabaseConnection.getConnection();
                 
-        
         dialog.add(dialogPanel);
         dialog.setVisible(true);
     }
     
+    // Add new transaction to database
+    private void addTransaction(JComboBox<String>typeCombobox, JTextField descriptionField, JTextField amountField){
+        
+            // Retrieve transaction details from the input fields
+            String type = (String) typeCombobox.getSelectedItem();
+            String description = descriptionField.getText();
+            String amount = amountField.getText();
+            
+            
+            //Parse the amount = string to a double value
+            double newAmount = Double.parseDouble(amount.replace("₱","").replace(" ","").replace(",",""));
+            
+            // Update the total amount based on the transaction type (Income or Expenses)
+            // Income
+            if(type.equals("Income")){ totalAmount += newAmount; }
+            
+            // Expense
+            else{ totalAmount -= newAmount; }
+            
+            // Update the displayed total amount on the dashboard panel
+            JPanel totalPanel = (JPanel) dashboardPanel.getComponent(2);
+            totalPanel.repaint();
+            
+            // Determine the index of the data panel to update based on the transaction type
+            int indexToUpdate = type.equals("Income") ? 1 : 0;
+            
+            //Retrieve the current value of the data panel
+            String currentValue = dataPanelValues.get(indexToUpdate);
+            
+            //Parse the current amount string to a double value
+            double currentAmount = Double.parseDouble(currentValue.replace("₱","").replace(" ","").replace(",",""));
+            
+            // Calculate the updated amount based on the transaction type
+            double updatedAmount = currentAmount + (type.equals("Income") ? newAmount : -newAmount);
+            
+            // Update the data panel with the new amount
+            dataPanelValues.set(indexToUpdate, String.format("₱%,.2f", updatedAmount));
+
+            // Update the displayed data panel on the dashboard panel
+            JPanel dataPanel = (JPanel) dashboardPanel.getComponent(indexToUpdate);
+            dataPanel.repaint();
+            
+
+            try {    
+                    Connection connection = DatabaseConnection.getConnection();
+                    String insertQuery = "INSERT INTO `transaction_table`(`transaction_type`, `description`, `amount`) VALUES (?,?,?)";
+                    PreparedStatement ps = connection.prepareStatement(insertQuery);
+
+                    ps.setString(1, type);
+                    ps.setString(2, description);
+                    ps.setDouble(3, Double.parseDouble(amount));
+                    ps.executeUpdate();
+                    System.out.println("Data inserted successfully!");
+
+            } catch (SQLException ex) {
+                System.out.println("Error: Data not inserted!");
+            }
+    }
 
     private void configureTransactionTable() {
         transactionTable.setBackground(new Color(236, 240, 241));
@@ -277,11 +354,15 @@ public class ExpenseIncomeTrackerApp {
             protected void paintComponent(Graphics g) {
                 // Call the paintComponent method of the superclass
                 super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g;
+                // Make the drawing smooth
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
                 // Check if the title is "Total" to determine the content to display
                 if (title.equals("Total")) {
-                    drawDataPanel(g, title, String.format("₱%,.2f", totalAmount), getWidth(), getHeight());
+                    drawDataPanel(g2d, title, String.format("₱%,.2f", totalAmount), getWidth(), getHeight());
                 } else {
-                    drawDataPanel(g, title, dataPanelValues.size() > index ? dataPanelValues.get(index) : "00", getWidth(), getHeight());
+                    drawDataPanel(g2d, title, dataPanelValues.get(index), getWidth(), getHeight());
                 }
             }
         };
