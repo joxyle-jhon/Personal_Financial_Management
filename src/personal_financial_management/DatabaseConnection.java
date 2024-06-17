@@ -13,9 +13,9 @@ import java.sql.SQLException;
  */
 public class DatabaseConnection {
     private static final String DB_NAME ="personal_financial_management"; //mao ni akong geh pangalan sa database sa PC
-    private static final String JDBC_URL ="jdbc:mysql://locahost:3306/"+DB_NAME;
+    private static final String JDBC_URL ="jdbc:mysql://localhost:3306/"+DB_NAME;
     private static final String USER ="root";
-    private static final String PASSWORD ="admin"; //admin ang password sa database ambot lang sa inyo alsida lang
+    private static final String PASSWORD =""; //admin ang password sa database ambot lang sa inyo alsida lang
     
     //create a function to get the connection
     public static Connection getConnection(){
