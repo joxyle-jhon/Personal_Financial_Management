@@ -235,7 +235,7 @@ public class ExpenseIncomeTrackerApp {
         dialogPanel.add(new JLabel());        
         dialogPanel.add(addButton);
         
-        
+        DatabaseConnection.getConnection();
                 
         
         dialog.add(dialogPanel);
