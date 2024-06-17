@@ -18,6 +18,9 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
@@ -36,6 +39,7 @@ import javax.swing.table.TableCellRenderer;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -43,6 +47,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 
 public class ExpenseIncomeTrackerApp {
 
+    private JButton exportButton;
     private JFrame frame;
     private JPanel titleBar;
     private JLabel titleLabel;
@@ -168,6 +173,8 @@ public class ExpenseIncomeTrackerApp {
         
         
         
+        
+        
         // Add data panels for Expense, Income, and Total
         addDataPanel("Expense", 0);
         addDataPanel("Income", 1);
@@ -180,19 +187,54 @@ public class ExpenseIncomeTrackerApp {
         addTransactionButton.setFont(new Font("Arial", Font.BOLD, 14));
         addTransactionButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         addTransactionButton.addActionListener((e) -> { showAddTransactionDialog(); });
+        // Inside the ExpenseIncomeTrackerApp class constructor
+        addTransactionButton.addActionListener((e) -> { 
+            // Add action listener to the "Add Transaction" button
+            System.out.println("Add Transaction button clicked"); // Print a message indicating that the button was clicked
+            showAddTransactionDialog(); // Call the method to display the add transaction dialog
+        });
+        
+        
 
         removeTransactionButton = new JButton("Remove Transaction");
-        removeTransactionButton.setBackground(new Color(76, 154, 42));
+        removeTransactionButton.setBackground(new Color(30, 86, 49));
         removeTransactionButton.setForeground(Color.WHITE);
         removeTransactionButton.setFocusPainted(false);
         removeTransactionButton.setFont(new Font("Arial", Font.BOLD, 14));
         removeTransactionButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        removeTransactionButton.addActionListener((e) -> {
+            removeSelectedTransaction();
+        });
+        // Inside the ExpenseIncomeTrackerApp class constructor
+        removeTransactionButton.addActionListener((e) -> {
+            // Add action listener to the "Remove Transaction" button
+            System.out.println("Remove Transaction button clicked"); // Print a message indicating that the button was clicked
+            removeSelectedTransaction(); // Call the method to remove the selected transaction
+        });
 
+        
         buttonsPanel = new JPanel();
         buttonsPanel.setLayout(new BorderLayout(10, 5));
         buttonsPanel.add(addTransactionButton, BorderLayout.NORTH);
         buttonsPanel.add(removeTransactionButton, BorderLayout.SOUTH);
         dashboardPanel.add(buttonsPanel);
+        
+        exportButton = new JButton("Export");
+        exportButton.setBackground(new Color(10, 173, 255));
+        exportButton.setForeground(Color.WHITE);
+        exportButton.setFocusPainted(false);
+        exportButton.setFont(new Font("Arial", Font.BOLD, 14));
+        exportButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        exportButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                exportButtonActionPerformed(evt);
+            System.out.println("Export Successfully!");
+            }
+            
+        });
+               
+        
+        buttonsPanel.add(exportButton);        
 
         String[] columnNames = {"ID", "Type", "Description", "Amount"};
         tableModel = new DefaultTableModel(columnNames, 0); // Initialize with 0 rows
@@ -202,9 +244,82 @@ public class ExpenseIncomeTrackerApp {
         JScrollPane scrollPane = new JScrollPane(transactionTable);
         configureScrollPane(scrollPane);
         dashboardPanel.add(scrollPane);
+        
+       
+        
 
         frame.setVisible(true);
     }
+    
+    
+    
+    
+    
+    
+    private void exportButtonActionPerformed(java.awt.event.ActionEvent evt) {
+    try {
+        exportToCSV();
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+}
+    // Exporting Files
+    private void exportToCSV() throws IOException {
+        String userHome = System.getProperty("user.home");
+        String filePath = userHome + "/Downloads/Personal-Finacial-Record.csv";
+        BufferedWriter bw = new BufferedWriter(new FileWriter(filePath));
+
+        // Write header
+        for (int i = 0; i < transactionTable.getColumnCount(); i++) {
+            bw.write(transactionTable.getColumnName(i) + ",");
+        }
+        bw.newLine();
+
+        // Write data
+        for (int i = 0; i < transactionTable.getRowCount(); i++) {
+            for (int j = 0; j < transactionTable.getColumnCount(); j++) {
+                bw.write(transactionTable.getValueAt(i, j).toString() + ",");
+            }
+            bw.newLine();
+        }
+
+        bw.flush();
+        bw.close();
+        JOptionPane.showMessageDialog(null, "Data exported successfully to " + filePath);
+    }
+
+
+
+    
+    private void printTransactions() {
+    // Get all transactions from the database
+    List<Transaction> transactions = TransactionDAO.getAllTransaction();
+
+    // Print each transaction
+    for (Transaction transaction : transactions) {
+        System.out.println("Transaction ID: " + transaction.getId());
+        System.out.println("Type: " + transaction.getType());
+        System.out.println("Description: " + transaction.getDescription());
+        System.out.println("Amount: " + transaction.getAmount());
+        System.out.println();
+    }
+}
+
+    
+    
+    // fix the negative value
+    private String fixNegativeValueDisplay(double value) {
+        String newVal = String.format("₱%,. 2f", value);
+        if(newVal.startsWith("₱-")){
+            String numericPart = newVal.substring(2);
+            newVal = "-₱"+numericPart;
+        }
+        return newVal;
+    }
+          
+    
+    
+    
     
     // Remove Selected transaction from the table and database
     private void removeSelectedTransaction(){
@@ -212,12 +327,67 @@ public class ExpenseIncomeTrackerApp {
         
         if (selectedRow != -1){
             int transactionId = (int) transactionTable.getValueAt(selectedRow, 0);
-            String type = (String) transactionTable.getValueAt(selectedRow, 1);
-            String amount = (String) transactionTable.getValueAt(selectedRow, 3);
+            String type = transactionTable.getValueAt(selectedRow, 1).toString();
+            String amountStr = transactionTable.getValueAt(selectedRow, 3).toString();
+            double amount = Double.parseDouble(amountStr.replace("₱", "").replace(" ", "").replace(",", "").replace("--", "-"));
             
+            // Update totalAmount based on the type of transaction
+            if(type.equals("Income")) { totalAmount -= amount; }
+            else { totalAmount -= amount; }
+            
+            JPanel totalPanel = (JPanel) dashboardPanel.getComponent(2);
+            totalPanel.repaint();
+            
+            int indexToUpdate = type.equals("Income") ? 1 : 0;
+            
+            
+            
+            String currentValue = dataPanelValues.get(indexToUpdate);
+            double currentAmount = Double.parseDouble(currentValue.replace("₱", "").replace(" ", "").replace(",", ""));
+            double updatedAmount = currentAmount + (type.equals("Income") ? -amount : amount);
+            dataPanelValues.set(indexToUpdate, String.format("₱%,.2f", updatedAmount));
+            
+            JPanel dataPanel = (JPanel) dashboardPanel.getComponent(indexToUpdate);
+            dataPanel.repaint();
+            
+            //Remove Selected row from table model
+            tableModel.removeRow(selectedRow);
+            removeTransactionFromDatabase(transactionId);
+            
+ 
             
         }
     }
+    
+    private void exportData() {
+        // Get all transactions from the database
+        List<Transaction> transactions = TransactionDAO.getAllTransaction();
+
+        // Define the file name and path
+        String fileName = "transactions.csv";
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
+            // Write column headers
+            writer.write("ID,Type,Description,Amount");
+            writer.newLine();
+
+            // Write each transaction
+            for (Transaction transaction : transactions) {
+                writer.write(transaction.getId() + "," +
+                             transaction.getType() + "," +
+                             transaction.getDescription() + "," +
+                             transaction.getAmount());
+                writer.newLine();
+            }
+
+            // Show success message
+            JOptionPane.showMessageDialog(frame, "Data exported successfully to " + fileName, "Export Success", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException ex) {
+            // Show error message if export fails
+            JOptionPane.showMessageDialog(frame, "Error exporting data: " + ex.getMessage(), "Export Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     
     
     // Remove transaction
@@ -271,6 +441,32 @@ public class ExpenseIncomeTrackerApp {
         addButton.setFocusPainted(false);
         addButton.setBorderPainted(false);
         addButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        
+
+
+        // Add the export button below the table panel
+        JPanel exportPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        exportPanel.setBackground(new Color(226, 240, 241));
+        exportPanel.add(exportButton);
+
+        dashboardPanel.add(exportPanel);
+
+
+        
+        // Inside the ExpenseIncomeTrackerApp constructor after adding other buttons
+        JButton printButton = new JButton("Print Transactions");
+        printButton.setBackground(new Color(59, 89, 182));
+        printButton.setForeground(Color.WHITE);
+        printButton.setFocusPainted(false);
+        printButton.setFont(new Font("Arial", Font.BOLD, 14));
+        printButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        printButton.addActionListener((e) -> {
+            printTransactions();
+        });
+
+buttonsPanel.add(printButton, BorderLayout.CENTER);
+        
         
         // Insert Button
         addButton.addActionListener((e) -> {
@@ -345,21 +541,32 @@ private void addTransaction(JComboBox<String> typeCombobox, JTextField descripti
         ps.setDouble(3, Double.parseDouble(amount));
         ps.executeUpdate();
         System.out.println("Data inserted successfully!");
+        
+        tableModel.setRowCount(0);
+        populateTableTransactions();
 
     } catch (SQLException ex) {
         System.out.println("Error: Data not inserted!");
     }
 }
 
-    // Populate Table Transaction
-    private void populateTableTransactions() {
-        
-        for(Transaction transaction : TransactionDAO.getAllTransaction()){
-            Object[] rowData = { transaction.getId(), transaction.getType(),
+// Populate Table Transactions
+private void populateTableTransactions() {
+    // Clear existing data from the table model
+    tableModel.setRowCount(0);
+
+    // Get all transactions from the database
+    List<Transaction> transactions = TransactionDAO.getAllTransaction();
+
+    // Iterate through each transaction and add it to the table model
+    for (Transaction transaction : transactions) {
+        Object[] rowData = {transaction.getId(), transaction.getType(),
                 transaction.getDescription(), transaction.getAmount()
-            };
-        }
+        };
+        tableModel.addRow(rowData);
     }
+}
+
 
 
     private void configureTransactionTable() {
@@ -370,7 +577,7 @@ private void addTransaction(JComboBox<String> typeCombobox, JTextField descripti
         transactionTable.setDefaultRenderer(Object.class, new TransactionTableCellRenderer());
         transactionTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         
-        populateTableTransactions();
+        populateTableTransactions(); //---------------------------------------------------------------------
        
         
 
@@ -386,7 +593,7 @@ private void addTransaction(JComboBox<String> typeCombobox, JTextField descripti
         scrollPane.setPreferredSize(new Dimension(850, 300)); // Set the size of the Panel
         scrollPane.getVerticalScrollBar().setUI(new CustomScrollBarUI()); 
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         
     }
     
@@ -503,63 +710,83 @@ private void addTransaction(JComboBox<String> typeCombobox, JTextField descripti
     
 }
 
-class CustomScrollBarUI extends BasicScrollBarUI {
-    private Color thumbColor = new Color(189, 195, 199);
-    private Color trackColor = new Color(236, 240, 241);
-    
-    @Override
-    protected void configureScrollBarColors(){
-        super.configureScrollBarColors();
+class CustomScrollBarUI extends BasicScrollBarUI{
+        // Colors for the thumb and track of the scroll bar
+        private Color thumbColor = Color.gray;
+        private Color trackColor = new Color(254,254,254);
+   
+        // Override method to configure the scroll bar colors
+        @Override
+        protected void configureScrollBarColors(){
+            // Call the superclass method to ensure default configuration
+            super.configureScrollBarColors();
+            
+        }
         
-    }
-    
-    @Override
-    protected JButton createDecreaseButton(int orientation) {
-        return createEmptyButton();
-    }
-
-    @Override
-    protected JButton createIncreaseButton(int orientation) {
-        return createEmptyButton();
-    }
-
-    @Override
-    protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
-        g.setColor(thumbColor);
-        g.fillRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height);
-    }
-
-    @Override
-    protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
-        g.setColor(trackColor);
-        g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
-    }
-    
-    private JButton createEmptyButton() {
-        JButton button = new JButton();
-        button.setPreferredSize(new Dimension(0, 0));
-        button.setMaximumSize(new Dimension(0, 0));
-        button.setMinimumSize(new Dimension(0, 0));
-        return button;
-    }
+        // Override method to create the decrease button of the scroll bar
+        @Override
+        protected JButton createDecreaseButton(int orientation){
+            // Create an empty button for the decrease button
+            return createEmptyButton();
+        }
+        
+        // Override method to create the increase button of the scroll bar
+        @Override
+        protected JButton createIncreaseButton(int orientation){
+            // Create an empty button for the increase button
+            return createEmptyButton();
+        }
+        
+        // Override method to paint the thumb of the scroll bar
+        @Override
+        protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds){
+            // Set the color and fill the thumb area with the specified color
+            g.setColor(thumbColor);
+            g.fillRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height);
+        }
+        
+        // Override method to paint the track of the scroll bar
+        @Override
+        protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds){
+            // Set the color and fill the track area with the specified color
+            g.setColor(trackColor);
+            g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
+        }
+        
+        // Private method to create an empty button with zero dimensions
+        private JButton createEmptyButton(){
+            JButton button = new JButton();
+            button.setPreferredSize(new Dimension(0, 0));
+            button.setMaximumSize(new Dimension(0, 0));
+            button.setMinimumSize(new Dimension(0, 0));
+            return button;
+        }
+        
 }
 
 // Custom cell renderer for the transaction table
-class TransactionTableCellRenderer extends DefaultTableCellRenderer{
-    
-    public Component getTableCellRenderer(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column){
+class TransactionTableCellRenderer extends DefaultTableCellRenderer {
+
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
         Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-        
+
         String type = (String) table.getValueAt(row, 1);
-        
-        if(isSelected){
-            c.setForeground(new Color(208,238,225));
-        }else{
-            if("Income".equals(type)){
-                c.setBackground(new Color(172,223,135,255));
-                
+
+        if (isSelected) {
+            c.setBackground(new Color(255, 255, 255)); // Set the background color for selected rows
+            c.setForeground(new Color(1, 1, 1));
+        } else {
+            if ("Income".equals(type)) {
+                c.setBackground(new Color(252, 240, 3)); // Set the background color for income rows
+                c.setForeground(Color.BLACK); // Set the foreground color for income rows
+            } else {
+                c.setBackground(new Color(252, 198, 3)); // Set the background color for expense rows
+                c.setForeground(Color.BLACK); // Set the foreground color for expense rows
             }
         }
         return c;
     }
 }
+
+
