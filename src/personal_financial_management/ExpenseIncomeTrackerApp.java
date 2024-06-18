@@ -2,6 +2,7 @@ package personal_financial_management;
 
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.*;
+import java.text.DecimalFormat;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -228,7 +229,6 @@ public class ExpenseIncomeTrackerApp {
         exportButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 exportButtonActionPerformed(evt);
-            System.out.println("Export Successfully!");
             }
             
         });
@@ -441,8 +441,7 @@ public class ExpenseIncomeTrackerApp {
         addButton.setFocusPainted(false);
         addButton.setBorderPainted(false);
         addButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
-        
+                
 
 
         // Add the export button below the table panel
@@ -466,6 +465,8 @@ public class ExpenseIncomeTrackerApp {
         });
 
 buttonsPanel.add(printButton, BorderLayout.CENTER);
+        
+
         
         
         // Insert Button
@@ -764,8 +765,16 @@ class CustomScrollBarUI extends BasicScrollBarUI{
         
 }
 
-// Custom cell renderer for the transaction table
 class TransactionTableCellRenderer extends DefaultTableCellRenderer {
+
+    private DecimalFormat decimalFormat;
+
+    public TransactionTableCellRenderer() {
+        // Set horizontal alignment to center
+        setHorizontalAlignment(SwingConstants.CENTER);
+        // Initialize DecimalFormat to format numbers with two decimal places
+        decimalFormat = new DecimalFormat("#,##0.00");
+    }
 
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -778,13 +787,20 @@ class TransactionTableCellRenderer extends DefaultTableCellRenderer {
             c.setForeground(new Color(1, 1, 1));
         } else {
             if ("Income".equals(type)) {
-                c.setBackground(new Color(252, 240, 3)); // Set the background color for income rows
+                c.setBackground(new Color(164, 222, 2, 255)); // Set the background color for income rows
                 c.setForeground(Color.BLACK); // Set the foreground color for income rows
             } else {
                 c.setBackground(new Color(252, 198, 3)); // Set the background color for expense rows
                 c.setForeground(Color.BLACK); // Set the foreground color for expense rows
             }
         }
+
+        // Format the value if it's a number
+        if (value instanceof Number) {
+            double amount = ((Number) value).doubleValue();
+            setText(decimalFormat.format(amount));
+        }
+
         return c;
     }
 }
