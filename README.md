@@ -1,4 +1,4 @@
-# Personal Financial Tracker
+# Personal Financial Tracker using Java
 
 ## Members
 - Jhon Lloyd Omblero
